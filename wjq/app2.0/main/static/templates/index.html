@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>APP文件检索系统</title>
+  </head>
+  <body>
+    <h1>APP文件检索系统</h1>
+    <form id="search-form" action="/search" method="POST">
+      <label for="query">查询关键字:</label>
+      <input type="text" id="query" name="query">
+      <br>
+      <label for="directory_path">目录路径:</label>
+      <button type="button" onclick="selectDirectory()">选择文件夹</button>
+      <br>
+      <input type="text" id="directory_path" name="directory_path" readonly>
+      <br>
+      <input type="submit" value="检索">
+    </form>
+    <hr>
+    <h2>检索结果</h2>
+    <div id="results">
+      <table>
+        <thead>
+          <tr>
+            <th>选择</th>
+            <th>路径</th>
+            <th>行号</th>
+            <th>内容</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <hr>
+    <button id="save-button" disabled>保存</button>
+    <a id="download-link" href="#" download></a>
+
+    <script src="static/scripts/main.js"></script>
+  </body>
+</html>
