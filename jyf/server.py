@@ -4,6 +4,8 @@ import os
 import json
 import psutil
 import chardet
+from PyPDF2 import PdfReader
+from docx import Document
 from urllib.parse import urlparse, parse_qs, unquote
 from http.server import SimpleHTTPRequestHandler
 from urllib.parse import unquote_plus
@@ -22,7 +24,6 @@ def get_folders_recursive(path):
     folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
     return folders
 
-
 def save_files_recursive(path):
     files = []
     for root, _, filenames in os.walk(path):
@@ -31,28 +32,51 @@ def save_files_recursive(path):
                 files.append(os.path.join(root, filename))
     return files
 
+def read_pdf(file_path):
+    with open(file_path, 'rb') as file:
+        pdf = PdfReader(file)
+        text = ''
+        for page_num in range(len(pdf.pages)):
+            text += pdf.pages[page_num].extract_text()
+        return text.split('\n')
+
+
+def read_docx(file_path):
+    doc = Document(file_path)
+    text = [paragraph.text for paragraph in doc.paragraphs]
+    return text
+
 def search_files(keyword):
     search_result = {}
     for file in saved_files:
+        lines = []
         try:
-            with open(file, 'rb') as f:
-                data = f.read()
-                encoding = chardet.detect(data)['encoding']
-                if encoding is None:
-                    encoding = 'utf-8'
-            with open(file, 'r', encoding=encoding, errors='ignore') as f:
-                lines = f.readlines()
-                for line_num, line in enumerate(lines, start=1):
-                    if keyword.lower() in line.lower():
-                        result = {'line': line_num, 'content': line.strip()}
-                        if file in search_result:
-                            search_result[file].append(result)
-                        else:
-                            search_result[file] = [result]
+            if file.endswith('.pdf'):
+                lines = read_pdf(file)
+            elif file.endswith('.docx'):
+                lines = read_docx(file)
+            else:  # .txt file
+                with open(file, 'rb') as f:
+                    data = f.read()
+                    encoding = chardet.detect(data)['encoding']
+                    if encoding is None:
+                        encoding = 'utf-8'
+                with open(file, 'r', encoding=encoding, errors='ignore') as f:
+                    lines = f.readlines()
 
-        except:
-            pass
+            for line_num, line in enumerate(lines, start=1):
+                if keyword.lower() in line.lower():
+                    result = {'line': line_num, 'content': line.strip()}
+                    if file in search_result:
+                        search_result[file].append(result)
+                    else:
+                        search_result[file] = [result]
+        except Exception as e:
+            print(f"Error processing file {file}: {e}")
+
+
     return search_result
+
 
 def get_drives():
     drives = []
@@ -115,3 +139,7 @@ class MyRequestHandler(SimpleHTTPRequestHandler):
 with socketserver.TCPServer(("", PORT), MyRequestHandler) as httpd:
     print("Server running on port", PORT)
     httpd.serve_forever()
+
+
+
+#增添了pdf,docx格式的文件的读取，重装了相关的库，以及做了错误的抛出处理，用以检测文件读取可能发生的错误
