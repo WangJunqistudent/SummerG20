@@ -2,7 +2,6 @@ import http.server
 import socketserver
 import os
 import json
-import psutil
 import chardet
 from PyPDF2 import PdfReader
 from docx import Document
@@ -10,6 +9,9 @@ from urllib.parse import urlparse, parse_qs, unquote
 from http.server import SimpleHTTPRequestHandler
 from urllib.parse import unquote_plus
 from http import HTTPStatus
+import mysql.connector
+import psutil
+
 
 # Define server port
 PORT = 8090
@@ -20,9 +22,24 @@ saved_files = []
 # Define the file formats to be saved
 file_formats = ['.pdf', '.docx', '.txt']
 
+# MySQL database connection configuration
+db_config = {
+    'host': 'localhost',
+    'port': 3306,
+    'user': 'root',
+    'password': '65711005',
+    'database': 'file_index'
+}
+
+# Establish MySQL database connection
+db_connection = mysql.connector.connect(**db_config)
+db_cursor = db_connection.cursor()
+
+
 def get_folders_recursive(path):
     folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
     return folders
+
 
 def save_files_recursive(path):
     files = []
@@ -31,6 +48,7 @@ def save_files_recursive(path):
             if os.path.splitext(filename)[1] in file_formats:
                 files.append(os.path.join(root, filename))
     return files
+
 
 def read_pdf(file_path):
     with open(file_path, 'rb') as file:
@@ -45,6 +63,7 @@ def read_docx(file_path):
     doc = Document(file_path)
     text = [paragraph.text for paragraph in doc.paragraphs]
     return text
+
 
 def search_files(keyword):
     search_result = {}
@@ -74,7 +93,6 @@ def search_files(keyword):
         except Exception as e:
             print(f"Error processing file {file}: {e}")
 
-
     return search_result
 
 
@@ -85,6 +103,7 @@ def get_drives():
             continue
         drives.append(drive.device)
     return drives
+
 
 class MyRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -108,6 +127,7 @@ class MyRequestHandler(SimpleHTTPRequestHandler):
         elif path == '/save':
             folder_path = unquote(query_params['path'][0])
             saved_files = save_files_recursive(folder_path)
+            insert_files_into_database(saved_files)
             self.send_response(HTTPStatus.OK)
             self.send_header('Content-type', 'text/plain; charset=utf-8')
             self.end_headers()
@@ -135,6 +155,32 @@ class MyRequestHandler(SimpleHTTPRequestHandler):
         self.send_my_headers()
         self.end_headers()
 
+
+def insert_files_into_database(files):
+    insert_query = "INSERT INTO files (file_path, file_type, content) VALUES (%s, %s, %s)"
+    for file in files:
+        try:
+            file_type = os.path.splitext(file)[1][1:]
+            content = None
+            if file_type == 'pdf':
+                content = '\n'.join(read_pdf(file))
+            elif file_type == 'docx':
+                content = '\n'.join(read_docx(file))
+            elif file_type == 'txt':
+                with open(file, 'rb') as f:
+                    data = f.read()
+                    encoding = chardet.detect(data)['encoding']
+                    if encoding is None:
+                        encoding = 'utf-8'
+                with open(file, 'r', encoding=encoding, errors='ignore') as f:
+                    content = f.read()
+            
+            db_cursor.execute(insert_query, (file, file_type, content))
+            db_connection.commit()
+        except Exception as e:
+            print(f"Error inserting file {file} into the database: {e}")
+
+
 # Create an HTTP server
 with socketserver.TCPServer(("", PORT), MyRequestHandler) as httpd:
     print("Server running on port", PORT)
@@ -142,4 +188,6 @@ with socketserver.TCPServer(("", PORT), MyRequestHandler) as httpd:
 
 
 
-#增添了pdf,docx格式的文件的读取，重装了相关的库，以及做了错误的抛出处理，用以检测文件读取可能发生的错误
+
+#增添了pdf,docx格式文件的读取，并且增加了错误抛出语句，能够正确显示读取文件可能遇到的问题
+#改变了文件的save方式，连接mysql数据库并从直接文件夹下搜索改为采用数据库建立索引的方式进行读取文件，提高效率。
