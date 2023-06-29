@@ -19,77 +19,17 @@
             display: none;
         }
     </style>
-</head>
-<body>
-    <h1>File Search</h1>
-
-    <form id="searchForm">
-        <label for="keywords">Enter Keywords:</label>
-        <input type="text" id="keywords" name="keywords" required>
-        <input type="submit" value="Search">
-    </form>
-
-    <div id="results"></div>
-
-    <button id="saveButton" onclick="saveResults()">Save</button>
-
     <script>
-        const searchForm = document.getElementById('searchForm');
-        const resultsContainer = document.getElementById('results');
-        const saveButton = document.getElementById('saveButton');
         let selectedResults = [];
 
-        searchForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const keywords = document.getElementById('keywords').value;
-            searchFiles(keywords);
-        });
-
-        function searchFiles(keywords) {
-            fetch('/search', {
-                method: 'POST',
-                body: new URLSearchParams({
-                    'keywords': keywords
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                displayResults(data);
-            });
+        function selectDisk(diskPath) {
+            // 在此处根据用户选择的硬盘目录加载文件列表并显示
+            // 你可以使用JavaScript或AJAX来实现异步加载文件列表的功能
         }
 
-        function displayResults(results) {
-            resultsContainer.innerHTML = '';
-
-            results.forEach(result => {
-                const resultDiv = document.createElement('div');
-                resultDiv.classList.add('result');
-
-                const path = document.createElement('p');
-                path.classList.add('path');
-                path.textContent = result.path;
-                resultDiv.appendChild(path);
-
-                result.lines.forEach(line => {
-                    const lineDiv = document.createElement('div');
-                    lineDiv.classList.add('line');
-                    lineDiv.textContent = line;
-                    resultDiv.appendChild(lineDiv);
-                });
-
-                const separator = document.createElement('hr');
-                resultDiv.appendChild(separator);
-
-                resultDiv.addEventListener('click', () => {
-                    resultDiv.classList.toggle('selected');
-                    updateSelectedResults();
-                });
-
-                resultsContainer.appendChild(resultDiv);
-            });
-
-            saveButton.style.display = 'none';
-            selectedResults = [];
+        function toggleSelect(resultDiv) {
+            resultDiv.classList.toggle('selected');
+            updateSelectedResults();
         }
 
         function updateSelectedResults() {
@@ -110,23 +50,37 @@
         }
 
         function saveResults() {
-            const textContent = selectedResults.map(result => {
-                let content = `${result.path}\n`;
-                result.lines.forEach(line => {
-                    content += `${line}\n`;
-                });
-                content += '\n';
-                return content;
-            }).join('');
+            // 在此处将选中的结果保存到数据库中
+            // 你可以使用JavaScript或发起服务器请求来实现保存到数据库的功能
+            // 这里只是一个示例，你需要根据实际情况进行修改
+            const resultData = JSON.stringify(selectedResults);
+            alert('Results saved: ' + resultData);
+        }
 
-            const element = document.createElement('a');
-            const file = new Blob([textContent], { type: 'text/plain' });
-            element.href = URL.createObjectURL(file);
-            element.download = 'search_results.txt';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
+        function searchFiles() {
+            const keywords = document.getElementById('keywords').value;
+            // 在此处根据输入的关键字进行搜索，并显示搜索结果
+            // 你可以使用JavaScript或AJAX来实现搜索功能
         }
     </script>
+</head>
+<body>
+    <h1>File Search</h1>
+
+    <button onclick="selectDisk('A:\')">Select Disk A</button>
+    <button onclick="selectDisk('B:\')">Select Disk B</button>
+    <!-- 添加更多选择硬盘的按钮 -->
+
+    <div id="fileList"></div>
+
+    <button id="saveButton" onclick="saveResults()">Save</button>
+
+    <hr>
+
+    <label for="keywords">Enter Keywords:</label>
+    <input type="text" id="keywords" name="keywords" required>
+    <button onclick="searchFiles()">Search</button>
+
+    <div id="results"></div>
 </body>
 </html>
